@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
-#include <windows.h>
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -20,8 +19,6 @@ using namespace GPIO;
 
 //const string CAM_PATH = "/dev/video0";
 const string CAM_PATH = "0";
-const string MAIN_WINDOW_NAME = "View";
-const string CANNY_WINDOW_NAME = "Canny";
 
 const int CANNY_LOWER_BOUND = 50;
 const int CANNY_UPPER_BOUND = 250;
@@ -43,80 +40,49 @@ typedef struct PID {
 #define HAVE_NEW_VELOCITY 0x01
 
 static PID lPID, rPID;
-static PID *lptr = &lPID;
-static PID *rptr = &rPID;
+static PID *lpid = &lPID;
+static PID *rpid = &rPID;
 int leftSpeed;
 int rightSpeed;
 int flag;
 
-void readSpeed() {
-    resetCounter();
-    delay(1000);
-    getCounter(&leftSpeed, &rightSpeed);
-    flag |= HAVE_NEW_VELOCITY;
-}
+void initialize();
 
-void incPIDInit(PID *sptr) {
-    sptr->set_speed = SET_SPEED;
-    sptr->error = 0;
-    sptr->error_next = 0;
-    sptr->error_last = 0;
-    sptr->A = Kp * (1 + T / Ti + Td / T);
-    sptr->B = Kp * (1 + 2 * Td / T);
-    sptr->C = Kp * Td / T;
-}
+void incPIDInit(PID *sptr);
+int incPIDCalc(PID *sptr, int actual_speed);
 
-int incPIDCalc(PID *sptr, int actual_speed) {
-    sptr->error = sptr->set_speed - actual_speed;
-    double inc_speed, res_speed;
-    inc_speed = sptr->A * sptr->error -
-                sptr->B * sptr->error_next +
-                sptr->C * sptr->error_last;
-    res_speed = actual_speed + inc_speed;
-    sptr->error_last = sptr->error_next;
-    sptr->error_next = sptr->error;
-    return (int) res_speed;
-}
+void forward();
+void stop();
 
 int main() {
-    //init
-    init();
-    incPIDInit(lptr);
-    incPIDInit(rptr);
-    leftSpeed = 0;
-    rightSpeed = 0;
-    flag = 0;
+    initialize();
 
+#ifdef _VEDIO
     VideoCapture capture(CAM_PATH);
-    //If this fails, try to open as a video camera, through the use of an integer param
     if (!capture.isOpened()) {
         capture.open(atoi(CAM_PATH.c_str()));
     }
-    //The time for camera's initialization
-    Sleep(1000);
+#endif
 
-    Mat image;
+    Mat image = imread("road.jpg");
     while (true) {
 
-        readSpeed();
-        if (flag & HAVE_NEW_VELOCITY) {
-            controlLeft(FORWARD, incPIDCalc(lptr, leftSpeed));
-            controlRight(FORWARD, incPIDCalc(rptr, rightSpeed));
-            flag &= ~HAVE_NEW_VELOCITY;
+#ifdef _VEDIO
+        capture >> image;
+#endif
+        if (image.empty()){
+            break;
         }
 
-        capture >> image;
-        if (image.empty())
-            break;
-        //Set the ROI(Region Of Interest) for the image
-        Rect roi(0, image.rows / 3, image.cols, image.rows / 3);
+        Rect roi(0, 0, image.cols, image.rows);
         Mat imgROI = image(roi);
 
-        //Canny algorithm
+        Mat imgGray;
+        cvtColor(imgROI, imgGray, CV_BGR2GRAY);
         Mat contours;
-        Canny(imgROI, contours, CANNY_LOWER_BOUND, CANNY_UPPER_BOUND);
+        Canny(imgGray, contours, CANNY_LOWER_BOUND, CANNY_UPPER_BOUND);
 #ifdef _DEBUG
-        imshow(CANNY_WINDOW_NAME, contours);
+        imshow("Canny", contours);
 #endif
 
         vector<Vec2f> lines;
@@ -162,7 +128,7 @@ int main() {
             //Draw a line
             line(result, pt1, pt2, Scalar(0, 255, 255), 3, CV_AA);
         }
-        imshow(MAIN_WINDOW_NAME, result);
+        imshow("View", result);
 #endif
 
         //decide directions
@@ -175,11 +141,11 @@ int main() {
             if (fabs(left1.x - left2.x) < E && fabs(right1.x - right2.x) < E) { //两条垂直线
                 turnTo(0);
             } else if (fabs(left1.x - left2.x) < E) { //左边界为垂直线
-                double angel = atan(fabs((right1.x - right2.x) / (right1.y - right2.y)));
+                double angel = atan(fabs((right1.x - right2.x) / (right1.y - right2.y))) * 180 / PI;
                 angel = 0 - (angel > 45 ? 45 : angel);
                 turnTo((int) angel);
             } else if (fabs(right1.x - right2.x) < E) { //右边界为垂直线
-                double angel = atan(fabs((right1.x - right2.x) / (right1.y - right2.y)));
+                double angel = atan(fabs((right1.x - right2.x) / (right1.y - right2.y))) * 180 / PI;
                 angel = angel > 45 ? 45 : angel;
                 turnTo((int) angel);
             } else {
@@ -195,9 +161,10 @@ int main() {
                     double left_len = sqrt(pow(x - left2.x, 2) + pow(y - left2.y, 2));
                     double right_len = sqrt(pow(x - right2.x, 2) + pow(y - right2.y, 2));
                     double prop = left_len / right_len;
-                    double x2 = (right2.x - x) * prop + x;
-                    double y2 = (right2.y - y) * prop + y;
-                    double angel = atan(fabs((x - x2) / (y - y2)));
+                    double x2 = (((right2.x - x) * prop + x) + left2.x) / 2;
+                    double y2 = (((right2.y - y) * prop + y) + left2.y) / 2;
+                    double angel = atan(fabs((x - x2) / (y - y2))) * 180 / PI;
+
                     angel = angel > 45 ? 45 : angel;
                     if (x < x2)
                         angel = 0 - angel;
@@ -212,10 +179,61 @@ int main() {
             break;
         }
 
+        forward();
+
         lines.clear();
         waitKey(1);
+
     }
+
+    stop();
+    return 0;
+}
+
+void initialize(){
+    GPIO::init();
+    incPIDInit(lpid);
+    incPIDInit(rpid);
+    leftSpeed = 0;
+    rightSpeed = 0;
+    flag = 0;
+}
+
+void incPIDInit(PID *sptr) {
+    sptr->set_speed = SET_SPEED;
+    sptr->error = 0;
+    sptr->error_next = 0;
+    sptr->error_last = 0;
+    sptr->A = Kp * (1 + T / Ti + Td / T);
+    sptr->B = Kp * (1 + 2 * Td / T);
+    sptr->C = Kp * Td / T;
+}
+
+int incPIDCalc(PID *sptr, int actual_speed) {
+    sptr->error = sptr->set_speed - actual_speed;
+    double inc_speed, res_speed;
+    inc_speed = sptr->A * sptr->error -
+                sptr->B * sptr->error_next +
+                sptr->C * sptr->error_last;
+    res_speed = actual_speed + inc_speed;
+    sptr->error_last = sptr->error_next;
+    sptr->error_next = sptr->error;
+    return (int) res_speed;
+}
+
+void forward(){
+    resetCounter();
+    delay(1000);
+    getCounter(&leftSpeed, &rightSpeed);
+    flag |= HAVE_NEW_VELOCITY;
+    if (flag & HAVE_NEW_VELOCITY) {
+        controlLeft(FORWARD, incPIDCalc(lpid, leftSpeed));
+        controlRight(FORWARD, incPIDCalc(rpid, rightSpeed));
+        flag &= ~HAVE_NEW_VELOCITY;
+    }
+}
+
+void stop(){
     stopLeft();
     stopRight();
-    return 0;
 }

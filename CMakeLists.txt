@@ -7,8 +7,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}"${CMAKE_SOURCE_DIR}/cmake/")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-set(SOURCE_FILES main.cpp GPIOlib.h)
+set(SOURCE_FILES main.cpp GPIOlib.h libGPIO.cpp)
 add_executable(RaspCar ${SOURCE_FILES})
 
 target_link_libraries(RaspCar ${OpenCV_LIBS})
-target_link_libraries(RaspCar ${PROJECT_SOURCE_DIR}/libGPIO.a)
+#target_link_libraries(RaspCar ${PROJECT_SOURCE_DIR}/libGPIO.a)
