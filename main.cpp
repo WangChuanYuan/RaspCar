@@ -1,4 +1,5 @@
 #define _DEBUG
+#define _VEDIO
 
 #include <cstdlib>
 #include <iostream>
@@ -16,8 +17,8 @@ using namespace cv;
 using namespace std;
 using namespace GPIO;
 
-//const string CAM_PATH = "/dev/video0";
-const string CAM_PATH = "0";
+const string CAM_PATH = "/dev/video0";
+//const string CAM_PATH = "0";
 
 const int CANNY_LOWER_BOUND = 50;
 const int CANNY_UPPER_BOUND = 250;
@@ -63,7 +64,7 @@ int main() {
     }
 #endif
 
-    Mat image = imread("road.jpg");
+    Mat image;
     while (true) {
 
 #ifdef _VEDIO
