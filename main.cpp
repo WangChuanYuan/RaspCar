@@ -10,7 +10,6 @@
 
 #include "GPIOlib.h"
 
-#define PI 3.14159265
 #define E 0.1
 
 using namespace cv;
@@ -86,7 +85,7 @@ int main() {
 #endif
 
         vector<Vec2f> lines;
-        HoughLines(contours, lines, 1, PI / 180, HOUGH_THRESHOLD);
+        HoughLines(contours, lines, 1, CV_PI / 180, HOUGH_THRESHOLD);
         Mat result(imgROI.size(), CV_8U, Scalar(255));
         imgROI.copyTo(result);
 
@@ -100,14 +99,14 @@ int main() {
             float theta = (*it)[1];        //Second element is angle theta
 
             //Filter to find out lines left and right, and atan(0.09) equals about 5 degrees
-            if (theta > 0.09 && theta < 1.48 && rho < minRight) {
-                hasRight = true;
-                minRight = rho;
-                rightBound = *it;
-            } else if (theta > 1.62 && theta < 3.05 && rho < minLeft) {
+            if (theta > 0.09 && theta < 1.48 && rho < minLeft) {
                 hasLeft = true;
                 minLeft = rho;
                 leftBound = *it;
+            } else if (theta > 1.62 && theta < 3.05 && rho < minRight) {
+                hasRight = true;
+                minRight = rho;
+                rightBound = *it;
             }
         }
 
@@ -138,39 +137,41 @@ int main() {
             Point2f left2((leftBound[0] - result.rows * sin(leftBound[1])) / cos(leftBound[1]), result.rows);
             Point2f right2((rightBound[0] - result.rows * sin(rightBound[1])) / cos(rightBound[1]), result.rows);
 
+            //intersection
+            double x =0, y = 0;
             if (fabs(left1.x - left2.x) < E && fabs(right1.x - right2.x) < E) { //两条垂直线
                 turnTo(0);
             } else if (fabs(left1.x - left2.x) < E) { //左边界为垂直线
-                double angel = atan(fabs((right1.x - right2.x) / (right1.y - right2.y))) * 180 / PI;
-                angel = 0 - (angel > 45 ? 45 : angel);
-                turnTo((int) angel);
+                double k = (right1.y - right2.y) / (right1.x - right2.x);
+                x = left1.x;
+                y = k * (x - right1.x) + right1.y;
             } else if (fabs(right1.x - right2.x) < E) { //右边界为垂直线
-                double angel = atan(fabs((right1.x - right2.x) / (right1.y - right2.y))) * 180 / PI;
-                angel = angel > 45 ? 45 : angel;
-                turnTo((int) angel);
+                double k = (left1.y - left2.y) / (left1.x - left2.x);
+                x = right1.x;
+                y = k * (x - left1.x) + left1.y;
             } else {
                 double k1 = (left1.y - left2.y) / (left1.x - left2.x);
                 double k2 = (right1.y - right2.y) / (right1.x - right2.x);
                 if (fabs(k1 - k2) < E) {
                     //两条平行线，由于上方已过滤，不可能存在
                 } else {
-                    //求交点
-                    double x = ((right1.y - left1.y) - (k2 * right1.x - k1 * left1.x) / (k1 - k2));
-                    double y = k1 * (x - left1.x) + left1.y;
-                    //求角平分线
-                    double left_len = sqrt(pow(x - left2.x, 2) + pow(y - left2.y, 2));
-                    double right_len = sqrt(pow(x - right2.x, 2) + pow(y - right2.y, 2));
-                    double prop = left_len / right_len;
-                    double x2 = (((right2.x - x) * prop + x) + left2.x) / 2;
-                    double y2 = (((right2.y - y) * prop + y) + left2.y) / 2;
-                    double angel = atan(fabs((x - x2) / (y - y2))) * 180 / PI;
-
-                    angel = angel > 45 ? 45 : angel;
-                    if (x < x2)
-                        angel = 0 - angel;
-                    turnTo((int) angel);
+                    x = ((right1.y - left1.y) - (k2 * right1.x - k1 * left1.x) / (k1 - k2));
+                    y = k1 * (x - left1.x) + left1.y;
                 }
             }
+
+            //求角平分线
+            double left_len = sqrt(pow(x - left2.x, 2) + pow(y - left2.y, 2));
+            double right_len = sqrt(pow(x - right2.x, 2) + pow(y - right2.y, 2));
+            double prop = left_len / right_len;
+            double x2 = (((right2.x - x) * prop + x) + left2.x) / 2;
+            double y2 = (((right2.y - y) * prop + y) + left2.y) / 2;
+            double angel = atan(fabs((x - x2) / (y - y2))) * 180 / CV_PI;
+
+            angel = angel > 45 ? 45 : angel;
+            if (x < x2)
+                angel = 0 - angel;
+            turnTo((int) angel);
         } else if (hasLeft) {
             turnTo(45);
         } else if (hasRight) {
