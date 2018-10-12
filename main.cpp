@@ -36,7 +36,7 @@ typedef struct PID {
 #define Kp 0.85
 #define Ti 0.45 //积分时间
 #define Td 0 //微分时间
-#define SET_SPEED 100
+#define SET_SPEED 30
 #define HAVE_NEW_VELOCITY 0x01
 
 static PID lPID, rPID;
@@ -79,8 +79,14 @@ int main() {
 
         Mat imgGray;
         cvtColor(imgROI, imgGray, CV_BGR2GRAY);
+        Mat imgDilate, dilateElement;
+        dilateElement = getStructuringElement(MORPH_RECT, Size(1, 1));
+        dilate(imgGray, imgDilate, dilateElement);
+        Mat imgErode, erodeElement;
+        erodeElement = getStructuringElement(MORPH_RECT, Size(1, 1));
+        dilate(imgDilate, imgErode, erodeElement);
         Mat contours;
-        Canny(imgGray, contours, CANNY_LOWER_BOUND, CANNY_UPPER_BOUND);
+        Canny(imgErode, contours, CANNY_LOWER_BOUND, CANNY_UPPER_BOUND);
 #ifdef _DEBUG
         imshow("Canny", contours);
 #endif
@@ -181,7 +187,7 @@ int main() {
             break;
         }
 
-        forward();
+        //forward();
 
         lines.clear();
         waitKey(1);
