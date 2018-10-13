@@ -1,5 +1,4 @@
 #define _DEBUG
-#define _VEDIO
 
 #include <cstdlib>
 #include <iostream>
@@ -18,11 +17,10 @@ using namespace std;
 using namespace GPIO;
 
 const string CAM_PATH = "/dev/video0";
-//const string CAM_PATH = "0";
 
 const int CANNY_LOWER_BOUND = 50;
 const int CANNY_UPPER_BOUND = 250;
-const int HOUGH_THRESHOLD = 150;
+const int HOUGH_THRESHOLD = 90;
 
 typedef struct PID {
     int set_speed;
@@ -44,14 +42,20 @@ static PID *lpid = &lPID;
 static PID *rpid = &rPID;
 int leftSpeed;
 int rightSpeed;
+int noLinesCount;
+double lastAngle;
 int flag;
+
+double distance(Point2f point, double k, double b);
 
 void initialize();
 
 void incPIDInit(PID *sptr);
+
 int incPIDCalc(PID *sptr, int actual_speed);
 
 void forward();
+void turn(double angle);
 void stop();
 
 int main() {
@@ -64,18 +68,19 @@ int main() {
     }
 #endif
 
-    Mat image;
+    Mat image = imread("road2.jpg");
     while (true) {
 
 #ifdef _VEDIO
         capture >> image;
 #endif
-        if (image.empty()){
+        if (image.empty()) {
             break;
         }
 
-        Rect roi(0, 0, image.cols, image.rows);
+        Rect roi(0, image.rows / 4, image.cols, 3 * image.rows / 5);
         Mat imgROI = image(roi);
+        //resize(imgROI, imgROI, Size(0, 0), 0.8, 0.6);
 
         Mat imgGray;
         cvtColor(imgROI, imgGray, CV_BGR2GRAY);
@@ -99,22 +104,39 @@ int main() {
         //find out the left and right boundaries
         Vec2f leftBound, rightBound;
         bool hasLeft = false, hasRight = false;
+        Point2f center(result.cols / 2, result.rows / 2);
         double minLeft = result.cols / 2.0;
         double minRight = result.cols / 2.0;
         for (vector<Vec2f>::const_iterator it = lines.begin(); it != lines.end(); ++it) {
             float rho = (*it)[0];            //First element is distance rho
             float theta = (*it)[1];        //Second element is angle theta
 
-            //Filter to find out lines left and right, and atan(0.09) equals about 5 degrees
-            if (theta > 0.09 && theta < 1.48 && rho < minLeft) {
+            Point2f pt1(rho / cos(theta), 0);
+            Point2f pt2((rho - result.rows * sin(theta)) / cos(theta), result.rows);
+
+            //filter out the vertical or horizontal lines
+            if (!(theta > 0.09 && theta < 1.48) && !(theta > 1.62 && theta < 3.05))
+                continue;
+
+            double k = (pt2.y - pt1.y) / (pt2.x - pt1.x);
+            double b = pt2.y - k * pt2.x;
+
+            double dist = distance(center, k, b);
+            double limitK = 0.1;
+
+            if (k < -limitK && dist < minLeft) {
                 hasLeft = true;
-                minLeft = rho;
+                minLeft = dist;
                 leftBound = *it;
-            } else if (theta > 1.62 && theta < 3.05 && rho < minRight) {
+            } else if (k > limitK  && dist < minRight) {
                 hasRight = true;
-                minRight = rho;
+                minRight = dist;
                 rightBound = *it;
             }
+
+#ifdef _DEBUG
+            line(result, pt1, pt2, Scalar(255, 0, 0), 1, CV_AA);
+#endif
         }
 
 #ifdef _DEBUG
@@ -124,7 +146,7 @@ int main() {
             //point of intersection of the line with last row
             Point2f pt2((leftBound[0] - result.rows * sin(leftBound[1])) / cos(leftBound[1]), result.rows);
             //Draw a line
-            line(result, pt1, pt2, Scalar(0, 255, 255), 3, CV_AA);
+            line(result, pt1, pt2, Scalar(0, 255, 255), 2, CV_AA);
         }
         if (hasRight) {
             //point of intersection of the line with first row
@@ -132,12 +154,12 @@ int main() {
             //point of intersection of the line with last row
             Point2f pt2((rightBound[0] - result.rows * sin(rightBound[1])) / cos(rightBound[1]), result.rows);
             //Draw a line
-            line(result, pt1, pt2, Scalar(0, 255, 255), 3, CV_AA);
+            line(result, pt1, pt2, Scalar(0, 255, 255), 2, CV_AA);
         }
-        imshow("View", result);
 #endif
 
         //decide directions
+        double angle = 0;
         if (hasLeft && hasRight) {
             Point2f left1(leftBound[0] / cos(leftBound[1]), 0);
             Point2f right1(rightBound[0] / cos(rightBound[1]), 0);
@@ -145,7 +167,7 @@ int main() {
             Point2f right2((rightBound[0] - result.rows * sin(rightBound[1])) / cos(rightBound[1]), result.rows);
 
             //intersection
-            double x =0, y = 0;
+            double x = 0, y = 0;
             if (fabs(left1.x - left2.x) < E && fabs(right1.x - right2.x) < E) { //两条垂直线
                 turnTo(0);
             } else if (fabs(left1.x - left2.x) < E) { //左边界为垂直线
@@ -173,37 +195,51 @@ int main() {
             double prop = left_len / right_len;
             double x2 = (((right2.x - x) * prop + x) + left2.x) / 2;
             double y2 = (((right2.y - y) * prop + y) + left2.y) / 2;
-            double angel = atan(fabs((x - x2) / (y - y2))) * 180 / CV_PI;
+            angle = atan(fabs((x - x2) / (y - y2))) * 180 / CV_PI;
 
-            angel = angel > 45 ? 45 : angel;
+            angle = angle > 45 ? 45 : angle;
             if (x < x2)
-                angel = 0 - angel;
-            turnTo((int) angel);
+                angle = 0 - angle;
+#ifdef _DEBUG
+            line(result, Point2f(x, y), Point2f(x2, y2), Scalar(0, 255, 0), 2, CV_AA);
+#endif
         } else if (hasLeft) {
-            turnTo(45);
+            angle = 5;
         } else if (hasRight) {
-            turnTo(-45);
+            angle = -5;
         } else {
-            break;
+            noLinesCount ++;
+            if(noLinesCount >= 10)
+                break;
+            angle = lastAngle;
         }
 
-        //forward();
+#ifdef _DEBUG
+        imshow("View", result);
+#endif
 
+        turn(angle);
+        forward();
         lines.clear();
         waitKey(1);
-
     }
 
     stop();
     return 0;
 }
 
-void initialize(){
+double distance(Point2f point, double k, double b) {
+    return fabs(k * point.x - point.y + b) / sqrt(k * k + 1);
+}
+
+void initialize() {
     GPIO::init();
     incPIDInit(lpid);
     incPIDInit(rpid);
     leftSpeed = 0;
     rightSpeed = 0;
+    noLinesCount = 0;
+    lastAngle = 0;
     flag = 0;
 }
 
@@ -229,7 +265,7 @@ int incPIDCalc(PID *sptr, int actual_speed) {
     return (int) res_speed;
 }
 
-void forward(){
+void forward() {
     resetCounter();
     delay(1000);
     getCounter(&leftSpeed, &rightSpeed);
@@ -241,7 +277,14 @@ void forward(){
     }
 }
 
-void stop(){
+void turn(double angle){
+    lastAngle = angle;
+    if(angle * lastAngle < 0 || fabs(angle - lastAngle) > 3){
+        turnTo(angle);
+    }
+}
+
+void stop() {
     stopLeft();
     stopRight();
 }

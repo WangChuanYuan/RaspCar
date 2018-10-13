@@ -11,4 +11,3 @@ set(SOURCE_FILES main.cpp GPIOlib.h libGPIO.cpp)
 add_executable(RaspCar ${SOURCE_FILES})
 
 target_link_libraries(RaspCar ${OpenCV_LIBS})
-#target_link_libraries(RaspCar ${PROJECT_SOURCE_DIR}/libGPIO.a)
