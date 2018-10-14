@@ -55,7 +55,9 @@ void incPIDInit(PID *sptr);
 int incPIDCalc(PID *sptr, int actual_speed);
 
 void forward();
+
 void turn(double angle);
+
 void stop();
 
 int main() {
@@ -128,7 +130,7 @@ int main() {
                 hasLeft = true;
                 minLeft = dist;
                 leftBound = *it;
-            } else if (k > limitK  && dist < minRight) {
+            } else if (k > limitK && dist < minRight) {
                 hasRight = true;
                 minRight = dist;
                 rightBound = *it;
@@ -168,8 +170,9 @@ int main() {
 
             //intersection
             double x = 0, y = 0;
+            bool hasIntersection = true;
             if (fabs(left1.x - left2.x) < E && fabs(right1.x - right2.x) < E) { //两条垂直线
-                turnTo(0);
+                hasIntersection = false;
             } else if (fabs(left1.x - left2.x) < E) { //左边界为垂直线
                 double k = (right1.y - right2.y) / (right1.x - right2.x);
                 x = left1.x;
@@ -183,6 +186,7 @@ int main() {
                 double k2 = (right1.y - right2.y) / (right1.x - right2.x);
                 if (fabs(k1 - k2) < E) {
                     //两条平行线，由于上方已过滤，不可能存在
+                    hasIntersection = false;
                 } else {
                     x = ((right1.y - left1.y) - (k2 * right1.x - k1 * left1.x) / (k1 - k2));
                     y = k1 * (x - left1.x) + left1.y;
@@ -190,26 +194,29 @@ int main() {
             }
 
             //求角平分线
-            double left_len = sqrt(pow(x - left2.x, 2) + pow(y - left2.y, 2));
-            double right_len = sqrt(pow(x - right2.x, 2) + pow(y - right2.y, 2));
-            double prop = left_len / right_len;
-            double x2 = (((right2.x - x) * prop + x) + left2.x) / 2;
-            double y2 = (((right2.y - y) * prop + y) + left2.y) / 2;
-            angle = atan(fabs((x - x2) / (y - y2))) * 180 / CV_PI;
+            if (hasIntersection) {
+                double left_len = sqrt(pow(x - left2.x, 2) + pow(y - left2.y, 2));
+                double right_len = sqrt(pow(x - right2.x, 2) + pow(y - right2.y, 2));
+                double prop = left_len / right_len;
+                double x2 = (((right2.x - x) * prop + x) + left2.x) / 2;
+                double y2 = (((right2.y - y) * prop + y) + left2.y) / 2;
+                angle = atan(fabs((x - x2) / (y - y2))) * 180 / CV_PI;
 
-            angle = angle > 45 ? 45 : angle;
-            if (x < x2)
-                angle = 0 - angle;
+                angle = angle > 45 ? 45 : angle;
+                if (x < x2)
+                    angle = 0 - angle;
 #ifdef _DEBUG
-            line(result, Point2f(x, y), Point2f(x2, y2), Scalar(0, 255, 0), 2, CV_AA);
+                line(result, Point2f(x, y), Point2f(x2, y2), Scalar(0, 255, 0), 2, CV_AA);
 #endif
+            } else angle = lastAngle;
+
         } else if (hasLeft) {
             angle = 5;
         } else if (hasRight) {
             angle = -5;
         } else {
-            noLinesCount ++;
-            if(noLinesCount >= 10)
+            noLinesCount++;
+            if (noLinesCount >= 10)
                 break;
             angle = lastAngle;
         }
@@ -277,9 +284,9 @@ void forward() {
     }
 }
 
-void turn(double angle){
+void turn(double angle) {
     lastAngle = angle;
-    if(angle * lastAngle < 0 || fabs(angle - lastAngle) > 3){
+    if (angle * lastAngle < 0 || fabs(angle - lastAngle) > 3) {
         turnTo(angle);
     }
 }
