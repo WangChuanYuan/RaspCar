@@ -287,7 +287,7 @@ void forward() {
 void turn(double angle) {
     lastAngle = angle;
     if (angle * lastAngle < 0 || fabs(angle - lastAngle) > 3) {
-        turnTo(angle);
+        turnTo((int)angle);
     }
 }
 
