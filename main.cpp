@@ -1,5 +1,5 @@
 #define _DEBUG
-#define _VEDIO
+#define _VIDEO
 
 #include <cstdlib>
 #include <iostream>
@@ -35,7 +35,7 @@ typedef struct PID {
 #define Kp 0.85
 #define Ti 0.45 //积分时间
 #define Td 0 //微分时间
-#define SET_SPEED 30
+#define SET_SPEED 5
 #define HAVE_NEW_VELOCITY 0x01
 
 static PID lPID, rPID;
@@ -64,24 +64,24 @@ void stop();
 int main() {
     initialize();
 
-#ifdef _VEDIO
+#ifdef _VIDEO
     VideoCapture capture(CAM_PATH);
     if (!capture.isOpened()) {
         capture.open(atoi(CAM_PATH.c_str()));
     }
 #endif
 
-    Mat image；
+    Mat image;
     while (true) {
 
-#ifdef _VEDIO
+#ifdef _VIDEO
         capture >> image;
 #endif
         if (image.empty()) {
             break;
         }
 
-        Rect roi(0, image.rows / 4, image.cols, 3 * image.rows / 5);
+        Rect roi(0, image.rows / 2, 4 * image.cols / 5, 2 * image.rows / 4);
         Mat imgROI = image(roi);
         //resize(imgROI, imgROI, Size(0, 0), 0.8, 0.6);
 
@@ -125,7 +125,7 @@ int main() {
             double b = pt2.y - k * pt2.x;
 
             double dist = distance(center, k, b);
-            double limitK = 0.1;
+            double limitK = 0.2;
 
             if (k < -limitK && dist < minLeft) {
                 hasLeft = true;
@@ -196,43 +196,43 @@ int main() {
 
             //求角平分线
             if (hasIntersection) {
-                double left_len = sqrt(pow(x - left2.x, 2) + pow(y - left2.y, 2));
-                double right_len = sqrt(pow(x - right2.x, 2) + pow(y - right2.y, 2));
-                double prop = left_len / right_len;
-                double x2 = (((right2.x - x) * prop + x) + left2.x) / 2;
-                double y2 = (((right2.y - y) * prop + y) + left2.y) / 2;
-                angle = atan(fabs((x - x2) / (y - y2))) * 180 / CV_PI;
+//                double left_len = sqrt(pow(x - left2.x, 2) + pow(y - left2.y, 2));
+//                double right_len = sqrt(pow(x - right2.x, 2) + pow(y - right2.y, 2));
+//                double prop = left_len / right_len;
+//                double x2 = (((right2.x - x) * prop + x) + left2.x) / 2;
+//                double y2 = (((right2.y - y) * prop + y) + left2.y) / 2;
+                Point2f bottomMid(result.cols / 2, result.rows);
+                angle = atan(fabs((x - bottomMid.x) / (y - bottomMid.y))) * 180 / CV_PI;
 
                 angle = angle > 45 ? 45 : angle;
-                if (x < x2)
+                if (x < bottomMid.x)
                     angle = 0 - angle;
 #ifdef _DEBUG
-                line(result, Point2f(x, y), Point2f(x2, y2), Scalar(0, 255, 0), 2, CV_AA);
+                line(result, Point2f(x, y), bottomMid, Scalar(0, 255, 0), 2, CV_AA);
 #endif
             } else angle = lastAngle;
 
         } else if (hasLeft) {
-            angle = 5;
+            angle = 15;
         } else if (hasRight) {
-            angle = -5;
+            angle = -20;
         } else {
             noLinesCount++;
-            if (noLinesCount >= 10)
-                break;
-            angle = lastAngle;
+            angle = 0;
         }
 
 #ifdef _DEBUG
         imshow("View", result);
 #endif
 
-        turn(angle);
+        turnTo(angle);
         forward();
         lines.clear();
         waitKey(1);
     }
 
     stop();
+    capture.release();
     return 0;
 }
 
@@ -275,7 +275,6 @@ int incPIDCalc(PID *sptr, int actual_speed) {
 
 void forward() {
 //    resetCounter();
-//    delay(1000);
 //    getCounter(&leftSpeed, &rightSpeed);
 //    flag |= HAVE_NEW_VELOCITY;
 //    if (flag & HAVE_NEW_VELOCITY) {
@@ -283,15 +282,15 @@ void forward() {
 //        controlRight(FORWARD, incPIDCalc(rpid, rightSpeed));
 //        flag &= ~HAVE_NEW_VELOCITY;
 //    }
- controlLeft(FORWARD, 5);
- controlRight(FORWARD, 5);
+    controlLeft(FORWARD, SET_SPEED);
+    controlRight(FORWARD, SET_SPEED);
 }
 
 void turn(double angle) {
-    lastAngle = angle;
     if (angle * lastAngle < 0 || fabs(angle - lastAngle) > 3) {
         turnTo((int)angle);
     }
+    lastAngle = angle;
 }
 
 void stop() {
