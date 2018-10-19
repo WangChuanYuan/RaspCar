@@ -1,4 +1,5 @@
 #define _DEBUG
+#define _VEDIO
 
 #include <cstdlib>
 #include <iostream>
@@ -70,7 +71,7 @@ int main() {
     }
 #endif
 
-    Mat image = imread("road2.jpg");
+    Mat image；
     while (true) {
 
 #ifdef _VEDIO
@@ -273,15 +274,17 @@ int incPIDCalc(PID *sptr, int actual_speed) {
 }
 
 void forward() {
-    resetCounter();
-    delay(1000);
-    getCounter(&leftSpeed, &rightSpeed);
-    flag |= HAVE_NEW_VELOCITY;
-    if (flag & HAVE_NEW_VELOCITY) {
-        controlLeft(FORWARD, incPIDCalc(lpid, leftSpeed));
-        controlRight(FORWARD, incPIDCalc(rpid, rightSpeed));
-        flag &= ~HAVE_NEW_VELOCITY;
-    }
+//    resetCounter();
+//    delay(1000);
+//    getCounter(&leftSpeed, &rightSpeed);
+//    flag |= HAVE_NEW_VELOCITY;
+//    if (flag & HAVE_NEW_VELOCITY) {
+//        controlLeft(FORWARD, incPIDCalc(lpid, leftSpeed));
+//        controlRight(FORWARD, incPIDCalc(rpid, rightSpeed));
+//        flag &= ~HAVE_NEW_VELOCITY;
+//    }
+ controlLeft(FORWARD, 5);
+ controlRight(FORWARD, 5);
 }
 
 void turn(double angle) {
