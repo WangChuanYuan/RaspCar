@@ -211,13 +211,17 @@ int main() {
                 line(result, Point2f(x, y), bottomMid, Scalar(0, 255, 0), 2, CV_AA);
 #endif
             } else angle = lastAngle;
-
+            noLinesCount = 0;
         } else if (hasLeft) {
             angle = 15;
+            noLinesCount = 0;
         } else if (hasRight) {
             angle = -20;
+            noLinesCount = 0;
         } else {
             noLinesCount++;
+            if(noLinesCount == 50)
+                break;
             angle = 0;
         }
 
