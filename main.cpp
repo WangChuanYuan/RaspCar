@@ -35,7 +35,7 @@ typedef struct PID {
 #define Kp 0.85
 #define Ti 0.45 //积分时间
 #define Td 0 //微分时间
-#define SET_SPEED 5
+#define SET_SPEED 6
 #define HAVE_NEW_VELOCITY 0x01
 
 static PID lPID, rPID;
@@ -213,14 +213,14 @@ int main() {
             } else angle = lastAngle;
             noLinesCount = 0;
         } else if (hasLeft) {
-            angle = 15;
+            angle = 18;
             noLinesCount = 0;
         } else if (hasRight) {
-            angle = -20;
+            angle = -13;
             noLinesCount = 0;
         } else {
             noLinesCount++;
-            if(noLinesCount == 50)
+            if(noLinesCount == 110)
                 break;
             angle = 0;
         }
@@ -236,7 +236,7 @@ int main() {
     }
 
     stop();
-    capture.release();
+    //capture.release();
     return 0;
 }
 
