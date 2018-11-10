@@ -1,8 +1,6 @@
 #define _DEBUG
 #define _VIDEO
 
-#include <cstdlib>
-#include <iostream>
 #include <vector>
 
 #include <opencv2/highgui.hpp>
@@ -23,41 +21,15 @@ const int CANNY_LOWER_BOUND = 50;
 const int CANNY_UPPER_BOUND = 250;
 const int HOUGH_THRESHOLD = 90;
 
-typedef struct PID {
-    int set_speed;
-    int error;
-    int error_next;
-    int error_last;
-    double A, B, C;
-} PID;
+#define SET_SPEED 7
 
-#define T 0.05 //采样周期
-#define Kp 0.85
-#define Ti 0.45 //积分时间
-#define Td 0 //微分时间
-#define SET_SPEED 6
-#define HAVE_NEW_VELOCITY 0x01
-
-static PID lPID, rPID;
-static PID *lpid = &lPID;
-static PID *rpid = &rPID;
-int leftSpeed;
-int rightSpeed;
 int noLinesCount;
-double lastAngle;
-int flag;
 
 double distance(Point2f point, double k, double b);
 
 void initialize();
 
-void incPIDInit(PID *sptr);
-
-int incPIDCalc(PID *sptr, int actual_speed);
-
 void forward();
-
-void turn(double angle);
 
 void stop();
 
@@ -210,13 +182,13 @@ int main() {
 #ifdef _DEBUG
                 line(result, Point2f(x, y), bottomMid, Scalar(0, 255, 0), 2, CV_AA);
 #endif
-            } else angle = lastAngle;
+            } else angle = 0;
             noLinesCount = 0;
         } else if (hasLeft) {
-            angle = 18;
+            angle = 15;
             noLinesCount = 0;
         } else if (hasRight) {
-            angle = -13;
+            angle = -18;
             noLinesCount = 0;
         } else {
             noLinesCount++;
@@ -246,55 +218,12 @@ double distance(Point2f point, double k, double b) {
 
 void initialize() {
     GPIO::init();
-    incPIDInit(lpid);
-    incPIDInit(rpid);
-    leftSpeed = 0;
-    rightSpeed = 0;
     noLinesCount = 0;
-    lastAngle = 0;
-    flag = 0;
-}
-
-void incPIDInit(PID *sptr) {
-    sptr->set_speed = SET_SPEED;
-    sptr->error = 0;
-    sptr->error_next = 0;
-    sptr->error_last = 0;
-    sptr->A = Kp * (1 + T / Ti + Td / T);
-    sptr->B = Kp * (1 + 2 * Td / T);
-    sptr->C = Kp * Td / T;
-}
-
-int incPIDCalc(PID *sptr, int actual_speed) {
-    sptr->error = sptr->set_speed - actual_speed;
-    double inc_speed, res_speed;
-    inc_speed = sptr->A * sptr->error -
-                sptr->B * sptr->error_next +
-                sptr->C * sptr->error_last;
-    res_speed = actual_speed + inc_speed;
-    sptr->error_last = sptr->error_next;
-    sptr->error_next = sptr->error;
-    return (int) res_speed;
 }
 
 void forward() {
-//    resetCounter();
-//    getCounter(&leftSpeed, &rightSpeed);
-//    flag |= HAVE_NEW_VELOCITY;
-//    if (flag & HAVE_NEW_VELOCITY) {
-//        controlLeft(FORWARD, incPIDCalc(lpid, leftSpeed));
-//        controlRight(FORWARD, incPIDCalc(rpid, rightSpeed));
-//        flag &= ~HAVE_NEW_VELOCITY;
-//    }
     controlLeft(FORWARD, SET_SPEED);
     controlRight(FORWARD, SET_SPEED);
-}
-
-void turn(double angle) {
-    if (angle * lastAngle < 0 || fabs(angle - lastAngle) > 3) {
-        turnTo((int)angle);
-    }
-    lastAngle = angle;
 }
 
 void stop() {
