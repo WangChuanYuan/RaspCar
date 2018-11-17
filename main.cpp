@@ -68,8 +68,8 @@ int main() {
         inRange(imgHSV, hsvRedLo, hsvRedHi, maskRed);
         vector<vector<Point>> boxes;
         vector<Vec4i> hierarchy;
-        Point2f corner[4];
-        float maxSize = 0;
+        Point2f obstacle[4];
+        float maxSize = ( imgROI.rows * image.cols) / 8.0;
         bool hasObstacle = false;
         findContours(maskRed, boxes, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         for (int i = 0; i < boxes.size(); i++) {
@@ -77,15 +77,14 @@ int main() {
             if (box.size.area() > maxSize) {
                 hasObstacle = true;
                 maxSize = box.size.area();
-                box.points(corner);
+                box.points(obstacle);
             }
         }
 #ifdef _DEBUG
         if (hasObstacle) {
-            line(result, corner[0], corner[1], Scalar(0, 0, 255), 2, CV_AA);
-            line(result, corner[1], corner[2], Scalar(0, 0, 255), 2, CV_AA);
-            line(result, corner[2], corner[3], Scalar(0, 0, 255), 2, CV_AA);
-            line(result, corner[3], corner[0], Scalar(0, 0, 255), 2, CV_AA);
+            for (int i = 0; i < 4 ; i++){
+                line(result, obstacle[i], obstacle[(i+1) % 4], Scalar(0, 0, 255), 2, CV_AA);
+            }
         }
         imshow("Red Area", maskRed);
 #endif
@@ -101,12 +100,11 @@ int main() {
         dilate(imgDilate, imgErode, erodeElement);
         Mat contours;
         Canny(imgErode, contours, CANNY_LOWER_BOUND, CANNY_UPPER_BOUND);
+        vector<Vec2f> lines;
+        HoughLines(contours, lines, 1, CV_PI / 180, HOUGH_THRESHOLD);
 #ifdef _DEBUG
         imshow("Canny", contours);
 #endif
-
-        vector<Vec2f> lines;
-        HoughLines(contours, lines, 1, CV_PI / 180, HOUGH_THRESHOLD);
 
         //find out the left and right boundaries
         Vec2f leftBound, rightBound;
