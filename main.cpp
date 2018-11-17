@@ -51,7 +51,7 @@ int main() {
     }
 #endif
 
-    Mat image;
+    Mat image = imread("view.jpg");
     while (true) {
 
 #ifdef _VIDEO
@@ -166,19 +166,19 @@ int main() {
             // 障碍物在左侧
             if (obstacleCenter.x < result.cols / 2) {
                 hasLeft = true;
-                left1 = obstacle[1];
-                left2 = Point2f((obstacle[3].x + obstacle[2].x) / 2.0, (obstacle[3].y + obstacle[2].y) / 2.0);
+                left1 = obstacle[2];
+                left2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
             } else {
                 hasRight = true;
-                right1 = obstacle[0];
-                right2 = Point2f((obstacle[3].x + obstacle[2].x) / 2.0, (obstacle[3].y + obstacle[2].y) / 2.0);
+                right1 = obstacle[1];
+                right2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
             }
         }
 
 
 #ifdef _DEBUG
         if (hasLeft)
-            line(result, right1, right2, Scalar(0, 255, 255), 2, CV_AA);
+            line(result, left1, left2, Scalar(0, 255, 255), 2, CV_AA);
         if (hasRight)
             line(result, right1, right2, Scalar(0, 255, 255), 2, CV_AA);
 #endif
