@@ -116,6 +116,7 @@ int main() {
         Point2f left1, left2;
         Point2f right1, right2;
         bool hasLeft = false, hasRight = false;
+        bool obstacleL = false, obstacleR = false;
         Point2f center(result.cols / 2, result.rows / 2);
         double minLeft = result.cols / 2.0;
         double minRight = result.cols / 2.0;
@@ -166,10 +167,12 @@ int main() {
             // 障碍物在左侧
             if (obstacleCenter.x < result.cols / 2) {
                 hasLeft = true;
+                obstacleL = true;
                 left1 = obstacle[2];
                 left2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
             } else {
                 hasRight = true;
+                obstacleR = true;
                 right1 = obstacle[1];
                 right2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
             }
@@ -225,6 +228,11 @@ int main() {
                 angle = angle > 45 ? 45 : angle;
                 if (x < bottomMid.x)
                     angle = 0 - angle;
+
+                if (obstacleR)
+                    angle = 0 - fabs(angle);
+                if (obstacleL)
+                    angle = fabs(angle);
 #ifdef _DEBUG
                 line(result, Point2f(x, y), bottomMid, Scalar(0, 255, 0), 2, CV_AA);
 #endif
