@@ -21,6 +21,11 @@ const int CANNY_LOWER_BOUND = 50;
 const int CANNY_UPPER_BOUND = 250;
 const int HOUGH_THRESHOLD = 80;
 
+const int leftAngle = -18;
+const int lleftAngle = -23;
+const int rightAngle = 15;
+const int lrightAngle = 20;
+
 const Scalar hsvRedLo(0, 70, 50);
 const Scalar hsvRedHi(10, 255, 255);
 
@@ -69,7 +74,7 @@ int main() {
         vector<vector<Point>> boxes;
         vector<Vec4i> hierarchy;
         Point2f obstacle[4];
-        float maxSize = ( imgROI.rows * image.cols) / 8.0;
+        float maxSize = (imgROI.rows * image.cols) / 16.0;
         bool hasObstacle = false;
         findContours(maskRed, boxes, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         for (int i = 0; i < boxes.size(); i++) {
@@ -82,8 +87,8 @@ int main() {
         }
 #ifdef _DEBUG
         if (hasObstacle) {
-            for (int i = 0; i < 4 ; i++){
-                line(result, obstacle[i], obstacle[(i+1) % 4], Scalar(0, 0, 255), 2, CV_AA);
+            for (int i = 0; i < 4; i++) {
+                line(result, obstacle[i], obstacle[(i + 1) % 4], Scalar(0, 0, 255), 2, CV_AA);
             }
         }
         imshow("Red Area", maskRed);
@@ -108,6 +113,8 @@ int main() {
 
         //find out the left and right boundaries
         Vec2f leftBound, rightBound;
+        Point2f left1, left2;
+        Point2f right1, right2;
         bool hasLeft = false, hasRight = false;
         Point2f center(result.cols / 2, result.rows / 2);
         double minLeft = result.cols / 2.0;
@@ -144,32 +151,41 @@ int main() {
 #endif
         }
 
-#ifdef _DEBUG
         if (hasLeft) {
-            //point of intersection of the line with first row
-            Point2f pt1(leftBound[0] / cos(leftBound[1]), 0);
-            //point of intersection of the line with last row
-            Point2f pt2((leftBound[0] - result.rows * sin(leftBound[1])) / cos(leftBound[1]), result.rows);
-            //Draw a line
-            line(result, pt1, pt2, Scalar(0, 255, 255), 2, CV_AA);
+            left1 = Point2f(leftBound[0] / cos(leftBound[1]), 0);
+            left2 = Point2f((leftBound[0] - result.rows * sin(leftBound[1])) / cos(leftBound[1]), result.rows);
         }
+
         if (hasRight) {
-            //point of intersection of the line with first row
-            Point2f pt1(rightBound[0] / cos(rightBound[1]), 0);
-            //point of intersection of the line with last row
-            Point2f pt2((rightBound[0] - result.rows * sin(rightBound[1])) / cos(rightBound[1]), result.rows);
-            //Draw a line
-            line(result, pt1, pt2, Scalar(0, 255, 255), 2, CV_AA);
+            right1 = Point2f(rightBound[0] / cos(rightBound[1]), 0);
+            right2 = Point2f((rightBound[0] - result.rows * sin(rightBound[1])) / cos(rightBound[1]), result.rows);
         }
+
+        if (hasObstacle) {
+            Point2f obstacleCenter((obstacle[0].x + obstacle[2].x) / 2.0, (obstacle[0].y + obstacle[2].y) / 2.0);
+            // 障碍物在左侧
+            if (obstacleCenter.x < result.cols / 2) {
+                hasLeft = true;
+                left1 = obstacle[1];
+                left2 = Point2f((obstacle[3].x + obstacle[2].x) / 2.0, (obstacle[3].y + obstacle[2].y) / 2.0);
+            } else {
+                hasRight = true;
+                right1 = obstacle[0];
+                right2 = Point2f((obstacle[3].x + obstacle[2].x) / 2.0, (obstacle[3].y + obstacle[2].y) / 2.0);
+            }
+        }
+
+
+#ifdef _DEBUG
+        if (hasLeft)
+            line(result, right1, right2, Scalar(0, 255, 255), 2, CV_AA);
+        if (hasRight)
+            line(result, right1, right2, Scalar(0, 255, 255), 2, CV_AA);
 #endif
 
         //decide directions
         double angle = 0;
         if (hasLeft && hasRight) {
-            Point2f left1(leftBound[0] / cos(leftBound[1]), 0);
-            Point2f right1(rightBound[0] / cos(rightBound[1]), 0);
-            Point2f left2((leftBound[0] - result.rows * sin(leftBound[1])) / cos(leftBound[1]), result.rows);
-            Point2f right2((rightBound[0] - result.rows * sin(rightBound[1])) / cos(rightBound[1]), result.rows);
 
             //intersection
             double x = 0, y = 0;
@@ -215,10 +231,14 @@ int main() {
             } else angle = 0;
             noLinesCount = 0;
         } else if (hasLeft) {
-            angle = 15;
+            if (hasObstacle) {
+                angle = lrightAngle;
+            } else angle = rightAngle;
             noLinesCount = 0;
         } else if (hasRight) {
-            angle = -18;
+            if (hasObstacle)
+                angle = lleftAngle;
+            else angle = leftAngle;
             noLinesCount = 0;
         } else {
             noLinesCount++;
