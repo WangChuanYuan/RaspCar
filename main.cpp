@@ -1,5 +1,5 @@
 #define _DEBUG
-//#define _VIDEO
+#define _VIDEO
 
 #include <vector>
 
@@ -51,7 +51,7 @@ int main() {
     }
 #endif
 
-    Mat image = imread("view.jpg");
+    Mat image;
     while (true) {
 
 #ifdef _VIDEO
