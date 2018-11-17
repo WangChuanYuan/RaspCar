@@ -1,5 +1,5 @@
 #define _DEBUG
-#define _VIDEO
+//#define _VIDEO
 
 #include <vector>
 
@@ -19,7 +19,10 @@ const string CAM_PATH = "/dev/video0";
 
 const int CANNY_LOWER_BOUND = 50;
 const int CANNY_UPPER_BOUND = 250;
-const int HOUGH_THRESHOLD = 90;
+const int HOUGH_THRESHOLD = 80;
+
+const Scalar hsvRedLo(0, 70, 50);
+const Scalar hsvRedHi(10, 255, 255);
 
 #define SET_SPEED 7
 
@@ -43,7 +46,7 @@ int main() {
     }
 #endif
 
-    Mat image;
+    Mat image = imread("view.jpg");
     while (true) {
 
 #ifdef _VIDEO
@@ -55,8 +58,39 @@ int main() {
 
         Rect roi(0, image.rows / 2, 4 * image.cols / 5, 2 * image.rows / 4);
         Mat imgROI = image(roi);
-        //resize(imgROI, imgROI, Size(0, 0), 0.8, 0.6);
+        Mat result(imgROI.size(), CV_8U, Scalar(255));
+        imgROI.copyTo(result);
 
+        // find red obstacle
+        Mat imgHSV;
+        cvtColor(imgROI, imgHSV, CV_BGR2HSV);
+        Mat maskRed;
+        inRange(imgHSV, hsvRedLo, hsvRedHi, maskRed);
+        vector<vector<Point>> boxes;
+        vector<Vec4i> hierarchy;
+        Point2f corner[4];
+        float maxSize = 0;
+        bool hasObstacle = false;
+        findContours(maskRed, boxes, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        for (int i = 0; i < boxes.size(); i++) {
+            RotatedRect box = minAreaRect(Mat(boxes[i]));
+            if (box.size.area() > maxSize) {
+                hasObstacle = true;
+                maxSize = box.size.area();
+                box.points(corner);
+            }
+        }
+#ifdef _DEBUG
+        if (hasObstacle) {
+            line(result, corner[0], corner[1], Scalar(0, 0, 255), 2, CV_AA);
+            line(result, corner[1], corner[2], Scalar(0, 0, 255), 2, CV_AA);
+            line(result, corner[2], corner[3], Scalar(0, 0, 255), 2, CV_AA);
+            line(result, corner[3], corner[0], Scalar(0, 0, 255), 2, CV_AA);
+        }
+        imshow("Red Area", maskRed);
+#endif
+
+        //find lines
         Mat imgGray;
         cvtColor(imgROI, imgGray, CV_BGR2GRAY);
         Mat imgDilate, dilateElement;
@@ -73,8 +107,6 @@ int main() {
 
         vector<Vec2f> lines;
         HoughLines(contours, lines, 1, CV_PI / 180, HOUGH_THRESHOLD);
-        Mat result(imgROI.size(), CV_8U, Scalar(255));
-        imgROI.copyTo(result);
 
         //find out the left and right boundaries
         Vec2f leftBound, rightBound;
@@ -192,8 +224,8 @@ int main() {
             noLinesCount = 0;
         } else {
             noLinesCount++;
-            if(noLinesCount == 110)
-                break;
+            //if(noLinesCount == 110)
+            //break;
             angle = 0;
         }
 
@@ -208,7 +240,6 @@ int main() {
     }
 
     stop();
-    //capture.release();
     return 0;
 }
 
