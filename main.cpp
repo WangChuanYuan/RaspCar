@@ -10,6 +10,7 @@
 #include "GPIOlib.h"
 
 #define E 0.1
+#define SET_SPEED 7
 
 using namespace cv;
 using namespace std;
@@ -23,13 +24,11 @@ const int HOUGH_THRESHOLD = 80;
 
 const int leftAngle = -18;
 const int lleftAngle = -23;
-const int rightAngle = 15;
-const int lrightAngle = 20;
+const int rightAngle = 13;
+const int lrightAngle = 15;
 
 const Scalar hsvRedLo(0, 70, 50);
 const Scalar hsvRedHi(10, 255, 255);
-
-#define SET_SPEED 7
 
 int noLinesCount;
 
@@ -74,7 +73,7 @@ int main() {
         vector<vector<Point>> boxes;
         vector<Vec4i> hierarchy;
         Point2f obstacle[4];
-        float maxSize = (imgROI.rows * image.cols) / 16.0;
+        float maxSize = (imgROI.rows * image.cols) / 30.0;
         bool hasObstacle = false;
         findContours(maskRed, boxes, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         for (int i = 0; i < boxes.size(); i++) {
@@ -163,16 +162,25 @@ int main() {
         }
 
         if (hasObstacle) {
-            Point2f obstacleCenter((obstacle[0].x + obstacle[2].x) / 2.0, (obstacle[0].y + obstacle[2].y) / 2.0);
-            // 障碍物在左侧
-            if (obstacleCenter.x < result.cols / 2) {
-                hasLeft = true;
+            //decide the side of the obstacle
+            if (hasLeft && !hasRight)
+                obstacleR = true;
+            else if (hasRight && !hasLeft)
                 obstacleL = true;
+            else {
+                Point2f obstacleCenter((obstacle[0].x + obstacle[2].x) / 2.0, (obstacle[0].y + obstacle[2].y) / 2.0);
+                if (obstacleCenter.x < result.cols / 2)
+                    obstacleL = true;
+                else
+                    obstacleR = true;
+            }
+            //let the obstacle be the boundary
+            if (obstacleL) {
+                hasLeft = true;
                 left1 = obstacle[2];
                 left2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
-            } else {
+            } else if (obstacleR) {
                 hasRight = true;
-                obstacleR = true;
                 right1 = obstacle[1];
                 right2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
             }
@@ -231,7 +239,7 @@ int main() {
 
                 if (obstacleR)
                     angle = 0 - fabs(angle);
-                if (obstacleL)
+                else if (obstacleL)
                     angle = fabs(angle);
 #ifdef _DEBUG
                 line(result, Point2f(x, y), bottomMid, Scalar(0, 255, 0), 2, CV_AA);
