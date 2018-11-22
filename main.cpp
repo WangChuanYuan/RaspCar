@@ -171,7 +171,7 @@ int main() {
             // decide the side of the obstacle
             Point2f obstacleCenter((obstacle[0].x + obstacle[2].x) / 2.0,
                                    (obstacle[0].y + obstacle[2].y) / 2.0);
-            double target = sqrt(pow(obstacle[0].y - obstacle[2].y, 2) + pow(obstacle[0].x - obstacle[2].x, 2));
+            double target = sqrt(pow(obstacle[0].y - obstacle[2].y, 2) + pow(obstacle[0].x - obstacle[2].x, 2)) / 2;
 
             double kLeft, bLeft, distLeft;
             double kRight, bRight, distRight;
