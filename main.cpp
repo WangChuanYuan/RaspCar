@@ -206,16 +206,17 @@ int main() {
                     else
                         obstacleR = true;
                 }
-                // let the obstacle be the boundary
-                if (obstacleL) {
-                    hasLeft = true;
-                    left1 = obstacle[2];
-                    left2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
-                } else if (obstacleR) {
-                    hasRight = true;
-                    right1 = obstacle[1];
-                    right2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
-                }
+            }
+
+            // let the obstacle be the boundary
+            if (obstacleL) {
+                hasLeft = true;
+                left1 = obstacle[2];
+                left2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
+            } else if (obstacleR) {
+                hasRight = true;
+                right1 = obstacle[1];
+                right2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
             }
         } else {
             obstacleL = false;
