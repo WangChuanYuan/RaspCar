@@ -77,7 +77,7 @@ int main() {
         vector<vector<Point>> boxes;
         vector<Vec4i> hierarchy;
         Point2f obstacle[4];
-        float maxSize = (imgROI.rows * imgROI.cols) / 40.0;
+        double maxSize = (result.rows * result.cols) / 45.0;
         findContours(maskRed, boxes, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         bool flag = false;
         for (int i = 0; i < boxes.size(); i++) {
@@ -133,7 +133,7 @@ int main() {
             //filter out the vertical or horizontal lines
             //if (!(theta > 0.09 && theta < 1.48) && !(theta > 1.62 && theta < 3.05))
             //continue;
-            if (theta < 0.09 || theta > 3.05)
+            if (theta > 1.48 && theta < 1.62)
                 continue;
 
             double k = (pt2.y - pt1.y) / (pt2.x - pt1.x);
@@ -189,11 +189,11 @@ int main() {
             // 如果左右都未判断有障碍物则进行判断，否则保留上次判断结果
             if (!obstacleR && !obstacleL) {
                 if (hasLeft && !hasRight) {
-                    if (distLeft > 1.5 * target)
+                    if (distLeft > 1.3 * target)
                         obstacleR = true;
                     else obstacleL = true;
                 } else if (hasRight && !hasLeft) {
-                    if (distRight > 1.5 * target)
+                    if (distRight > 1.3 * target)
                         obstacleL = true;
                     else obstacleR = true;
                 } else if (hasLeft && hasRight) {
