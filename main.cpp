@@ -132,7 +132,7 @@ int main() {
 
             //filter out the vertical or horizontal lines
             //if (!(theta > 0.09 && theta < 1.48) && !(theta > 1.62 && theta < 3.05))
-                //continue;
+            //continue;
             if (theta < 0.09 || theta > 3.05)
                 continue;
 
@@ -169,15 +169,38 @@ int main() {
 
         if (hasObstacle) {
             // decide the side of the obstacle
+            Point2f obstacleCenter((obstacle[0].x + obstacle[2].x) / 2.0,
+                                   (obstacle[0].y + obstacle[2].y) / 2.0);
+            double target = sqrt(pow(obstacle[0].y - obstacle[2].y, 2) + pow(obstacle[0].x - obstacle[2].x, 2));
+
+            double kLeft, bLeft, distLeft;
+            double kRight, bRight, distRight;
+            if (hasLeft) {
+                kLeft = (left2.y - left1.y) / (left2.x - left1.x);
+                bLeft = left2.y - kLeft * left2.x;
+                distLeft = distance(obstacleCenter, kLeft, bLeft);
+            }
+            if (hasRight) {
+                kRight = (right2.y - right1.y) / (right2.x - right1.x);
+                bRight = right2.y - kRight * right2.x;
+                distRight = distance(obstacleCenter, kRight, bRight);
+            }
+
             // 如果左右都未判断有障碍物则进行判断，否则保留上次判断结果
             if (!obstacleR && !obstacleL) {
-                if (hasLeft && !hasRight)
-                    obstacleR = true;
-                else if (hasRight && !hasLeft)
-                    obstacleL = true;
-                else {
-                    Point2f obstacleCenter((obstacle[0].x + obstacle[2].x) / 2.0,
-                                           (obstacle[0].y + obstacle[2].y) / 2.0);
+                if (hasLeft && !hasRight) {
+                    if (distLeft > 1.5 * target)
+                        obstacleR = true;
+                    else obstacleL = true;
+                } else if (hasRight && !hasLeft) {
+                    if (distRight > 1.5 * target)
+                        obstacleL = true;
+                    else obstacleR = true;
+                } else if (hasLeft && hasRight) {
+                    if (distLeft > distRight)
+                        obstacleR = true;
+                    else obstacleL = true;
+                } else {
                     if (obstacleCenter.x < result.cols / 2)
                         obstacleL = true;
                     else
