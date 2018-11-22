@@ -24,8 +24,12 @@ const int HOUGH_THRESHOLD = 80;
 
 const int leftAngle = -18;
 const int lleftAngle = -23;
-const int rightAngle = 13;
-const int lrightAngle = 15;
+const int rightAngle = 5;
+const int lrightAngle = 8;
+
+bool hasObstacle = false;
+bool obstacleL = false;
+bool obstacleR = false;
 
 const Scalar hsvRedLo(0, 70, 50);
 const Scalar hsvRedHi(10, 255, 255);
@@ -73,17 +77,18 @@ int main() {
         vector<vector<Point>> boxes;
         vector<Vec4i> hierarchy;
         Point2f obstacle[4];
-        float maxSize = (imgROI.rows * image.cols) / 30.0;
-        bool hasObstacle = false;
+        float maxSize = (imgROI.rows * imgROI.cols) / 40.0;
         findContours(maskRed, boxes, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        bool flag = false;
         for (int i = 0; i < boxes.size(); i++) {
             RotatedRect box = minAreaRect(Mat(boxes[i]));
             if (box.size.area() > maxSize) {
-                hasObstacle = true;
+                flag = true;
                 maxSize = box.size.area();
                 box.points(obstacle);
             }
         }
+        hasObstacle = flag;
 #ifdef _DEBUG
         if (hasObstacle) {
             for (int i = 0; i < 4; i++) {
@@ -93,7 +98,7 @@ int main() {
         imshow("Red Area", maskRed);
 #endif
 
-        //find lines
+        // find lines
         Mat imgGray;
         cvtColor(imgROI, imgGray, CV_BGR2GRAY);
         Mat imgDilate, dilateElement;
@@ -110,12 +115,11 @@ int main() {
         imshow("Canny", contours);
 #endif
 
-        //find out the left and right boundaries
+        // find out the left and right boundaries
         Vec2f leftBound, rightBound;
         Point2f left1, left2;
         Point2f right1, right2;
         bool hasLeft = false, hasRight = false;
-        bool obstacleL = false, obstacleR = false;
         Point2f center(result.cols / 2, result.rows / 2);
         double minLeft = result.cols / 2.0;
         double minRight = result.cols / 2.0;
@@ -127,7 +131,9 @@ int main() {
             Point2f pt2((rho - result.rows * sin(theta)) / cos(theta), result.rows);
 
             //filter out the vertical or horizontal lines
-            if (!(theta > 0.09 && theta < 1.48) && !(theta > 1.62 && theta < 3.05))
+            //if (!(theta > 0.09 && theta < 1.48) && !(theta > 1.62 && theta < 3.05))
+                //continue;
+            if (theta < 0.09 || theta > 3.05)
                 continue;
 
             double k = (pt2.y - pt1.y) / (pt2.x - pt1.x);
@@ -162,28 +168,35 @@ int main() {
         }
 
         if (hasObstacle) {
-            //decide the side of the obstacle
-            if (hasLeft && !hasRight)
-                obstacleR = true;
-            else if (hasRight && !hasLeft)
-                obstacleL = true;
-            else {
-                Point2f obstacleCenter((obstacle[0].x + obstacle[2].x) / 2.0, (obstacle[0].y + obstacle[2].y) / 2.0);
-                if (obstacleCenter.x < result.cols / 2)
-                    obstacleL = true;
-                else
+            // decide the side of the obstacle
+            // 如果左右都未判断有障碍物则进行判断，否则保留上次判断结果
+            if (!obstacleR && !obstacleL) {
+                if (hasLeft && !hasRight)
                     obstacleR = true;
+                else if (hasRight && !hasLeft)
+                    obstacleL = true;
+                else {
+                    Point2f obstacleCenter((obstacle[0].x + obstacle[2].x) / 2.0,
+                                           (obstacle[0].y + obstacle[2].y) / 2.0);
+                    if (obstacleCenter.x < result.cols / 2)
+                        obstacleL = true;
+                    else
+                        obstacleR = true;
+                }
+                // let the obstacle be the boundary
+                if (obstacleL) {
+                    hasLeft = true;
+                    left1 = obstacle[2];
+                    left2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
+                } else if (obstacleR) {
+                    hasRight = true;
+                    right1 = obstacle[1];
+                    right2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
+                }
             }
-            //let the obstacle be the boundary
-            if (obstacleL) {
-                hasLeft = true;
-                left1 = obstacle[2];
-                left2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
-            } else if (obstacleR) {
-                hasRight = true;
-                right1 = obstacle[1];
-                right2 = Point2f((obstacle[0].x + obstacle[3].x) / 2.0, (obstacle[0].y + obstacle[3].y) / 2.0);
-            }
+        } else {
+            obstacleL = false;
+            obstacleR = false;
         }
 
 
