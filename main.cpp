@@ -85,7 +85,14 @@ int main() {
             if (box.size.area() > maxSize) {
                 flag = true;
                 maxSize = box.size.area();
-                box.points(obstacle);
+                Point2f center = box.center;
+                float height = box.size.height;
+                float width = box.size.width;
+                obstacle[0] = Point2f(center.x - width / 2, center.y + height / 2);
+                obstacle[1] = Point2f(center.x - width / 2, center.y - height / 2);
+                obstacle[2] = Point2f(center.x + width / 2, center.y - height / 2);
+                obstacle[3] = Point2f(center.x + width / 2, center.y + height / 2);
+                //box.points(obstacle);
             }
         }
         hasObstacle = flag;
