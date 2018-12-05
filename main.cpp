@@ -10,7 +10,7 @@
 #include "GPIOlib.h"
 
 #define E 0.1
-#define SET_SPEED 7
+#define SET_SPEED 10
 
 using namespace cv;
 using namespace std;
@@ -19,13 +19,13 @@ using namespace GPIO;
 const string CAM_PATH = "/dev/video0";
 
 const int CANNY_LOWER_BOUND = 50;
-const int CANNY_UPPER_BOUND = 250;
+const int CANNY_UPPER_BOUND = 270;
 const int HOUGH_THRESHOLD = 80;
 
 const int leftAngle = -18;
-const int lleftAngle = -23;
-const int rightAngle = 5;
-const int lrightAngle = 8;
+const int lleftAngle = -20;
+const int rightAngle = 18;
+const int lrightAngle = 20;
 
 bool hasObstacle = false;
 bool obstacleL = false;
@@ -77,7 +77,7 @@ int main() {
         vector<vector<Point>> boxes;
         vector<Vec4i> hierarchy;
         Point2f obstacle[4];
-        double maxSize = (result.rows * result.cols) / 45.0;
+        double maxSize = (result.rows * result.cols) / 65.0;
         findContours(maskRed, boxes, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         bool flag = false;
         for (int i = 0; i < boxes.size(); i++) {
